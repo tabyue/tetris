@@ -408,6 +408,7 @@ function clearRows() {
     lines += cleared;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 800 - (level - 1) * 60);
+    updateDropTimer();
     updateUI();
   }
 }
@@ -581,6 +582,7 @@ function rotatePiece() {
 function endGame() {
   gameOver = true;
   playing = false;
+  stopDropTimer();
   overlayTitle.textContent = '游戏结束';
   overlaySub.textContent = `等级 ${level} · ${lines} 行`;
   overlayScore.textContent = score;
@@ -603,16 +605,43 @@ function startGame() {
   overlay.classList.add('hidden');
   overlayScore.classList.add('hidden');
   lastDrop = performance.now();
+  // 重新启动游戏循环
+  cancelAnimationFrame(animFrame);
+  animFrame = requestAnimationFrame(loop);
+  startDropTimer();
   draw();
 }
 
 // ===================== 游戏循环 =====================
+let dropTimer = null;
+
 function loop(now) {
   animFrame = requestAnimationFrame(loop);
   if (!playing || gameOver || paused) return;
   if (now - lastDrop > dropInterval) {
     moveDown();
     lastDrop = now;
+  }
+}
+
+// setInterval 保底：确保即使 rAF 被节流，方块也能自动下落
+function startDropTimer() {
+  stopDropTimer();
+  dropTimer = setInterval(() => {
+    if (!playing || gameOver || paused) return;
+    moveDown();
+    lastDrop = performance.now();
+  }, dropInterval);
+}
+
+function stopDropTimer() {
+  if (dropTimer) { clearInterval(dropTimer); dropTimer = null; }
+}
+
+// 等级变化时更新 interval
+function updateDropTimer() {
+  if (playing && !gameOver && !paused) {
+    startDropTimer();
   }
 }
 
